@@ -10,7 +10,6 @@ def num_for_line(line: str) -> int:
 
     return 10 * first + last
 
-
 def main():
     with open('day1_input.txt', 'r') as f:
         lines = f.readlines()
