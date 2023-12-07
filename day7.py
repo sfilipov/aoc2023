@@ -34,7 +34,7 @@ CARD_STRENGTH = {
 }
 
 
-def get_hand_type(hand: str) -> HandType:
+def get_hand_type_part1(hand: str) -> HandType:
     counts = [count for card, count in Counter(hand).most_common()]
     if counts[0] == 5:
         return HandType.FiveKind
@@ -47,8 +47,33 @@ def get_hand_type(hand: str) -> HandType:
     return HandType.High
 
 
-def compare_key(hand: str):
-    return (get_hand_type(hand), tuple(CARD_STRENGTH[card] for card in hand))
+def get_hand_type_part2(hand: str) -> HandType:
+    c = Counter(hand)
+    jokers = c.get("J", 0)
+    counts = [count for card, count in c.most_common() if card != "J"]
+    if not counts:
+        return HandType.FiveKind
+    counts[0] += jokers
+    if counts[0] == 5:
+        return HandType.FiveKind
+    if counts[0] == 4:
+        return HandType.FourKind
+    if counts[0] == 3:
+        return HandType.FullHouse if counts[1] == 2 else HandType.ThreeKind
+    if counts[0] == 2:
+        return HandType.TwoPairs if counts[1] == 2 else HandType.TwoKind
+    return HandType.High
+
+
+def compare_key_part1(hand: str):
+    return (get_hand_type_part1(hand), tuple(CARD_STRENGTH[card] for card in hand))
+
+
+def compare_key_part2(hand: str):
+    return (
+        get_hand_type_part2(hand),
+        tuple(CARD_STRENGTH[card] if card != "J" else 1 for card in hand),
+    )
 
 
 def main():
@@ -56,11 +81,19 @@ def main():
         lines = [line.strip().split() for line in f.readlines()]
         hands = [(hand, int(bid)) for hand, bid in lines]
 
-    hands = sorted(hands, key=lambda k: compare_key(k[0]))
+    hands = sorted(hands, key=lambda k: compare_key_part1(k[0]))
     result = 0
     for i, hand_bid in enumerate(hands):
         rank = i + 1
-        hand, bid = hand_bid
+        bid = hand_bid[1]
+        result += rank * bid
+    print(result)
+
+    hands = sorted(hands, key=lambda k: compare_key_part2(k[0]))
+    result = 0
+    for i, hand_bid in enumerate(hands):
+        rank = i + 1
+        bid = hand_bid[1]
         result += rank * bid
     print(result)
 
