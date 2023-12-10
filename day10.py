@@ -40,7 +40,8 @@ def get_from_grid(grid: list[str], pos: Position) -> str:
 
 
 def conn_for_pos(grid: list[str], pos: Position) -> str:
-    return conn_for_symbol(get_from_grid(grid, pos))
+    symbol = get_from_grid(grid, pos)
+    return conn_for_symbol(symbol) if symbol != "S" else conn_for_start(grid, pos)
 
 
 def conn_for_start(grid: list[str], pos: Position) -> str:
@@ -62,10 +63,7 @@ def conn_for_start(grid: list[str], pos: Position) -> str:
 
 def next_for_pos(grid: list[str], pos: Position) -> tuple[Position, Position]:
     symbol = grid[pos.row][pos.col]
-    if symbol == "S":
-        conn = conn_for_start(grid, pos)
-    else:
-        conn = conn_for_pos(grid, pos)
+    conn = conn_for_pos(grid, pos)
 
     result: list[Position] = []
     if "n" in conn:
@@ -80,7 +78,7 @@ def next_for_pos(grid: list[str], pos: Position) -> tuple[Position, Position]:
     return (result[0], result[1])
 
 
-def traverse_furthest(grid: list[str], start: Position) -> int:
+def traverse_furthest(grid: list[str], start: Position) -> tuple[int, set[Position]]:
     dis = {start: 0}
     to_visit = deque(next_for_pos(grid, start))
     result = 0
@@ -96,7 +94,42 @@ def traverse_furthest(grid: list[str], start: Position) -> int:
             dis[p] = dis[right] + 1
             to_visit.append(left)
         result = max(result, dis[p])
-    return result
+    return (result, set(dis))
+
+
+def count_inside(grid: list[str], loop_seen: set[Position]) -> int:
+    def is_inside(pos: Position):
+        intersects = 0
+        loop_source = None
+        for j in range(pos.col + 1, len(grid[pos.row])):
+            ray = Position(pos.row, j)
+            if ray not in loop_seen:
+                continue
+            conns = conn_for_pos(grid, ray)
+            if not loop_source:
+                if conns == "ns":
+                    intersects += 1
+                else:
+                    loop_source = "n" if "n" in conns else "s"
+            else:
+                if conns == "ew":
+                    continue
+                if loop_source not in conns:
+                    intersects += 1
+                loop_source = None
+
+        return intersects % 2 == 1
+
+    count = 0
+    for i, row in enumerate(grid):
+        for j in range(len(row)):
+            pos = Position(i, j)
+            if pos in loop_seen:
+                continue
+            if is_inside(pos):
+                count += 1
+
+    return count
 
 
 def main():
@@ -104,8 +137,11 @@ def main():
         grid = [line.strip() for line in f.readlines()]
 
     start = find_start(grid)
-    result = traverse_furthest(grid, start)
-    print(result)
+    result_part1, loop_seen = traverse_furthest(grid, start)
+    result_part2 = count_inside(grid, loop_seen)
+
+    print(result_part1)
+    print(result_part2)
 
 
 if __name__ == "__main__":
