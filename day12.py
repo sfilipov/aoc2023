@@ -31,6 +31,28 @@ def is_valid(model: str, defects: list[int]) -> bool:
     return tuple(defects_array) == tuple(defects)
 
 
+def infer(model: str, defects: list[int]) -> tuple[str, list[int]]:
+    known_defect_index = model.find("#")
+    if known_defect_index == -1:
+        return (model, defects)
+    defect_len = defects[0]
+    if known_defect_index == 0:
+        return infer(model[defect_len + 1 :], defects[1:])
+    if known_defect_index == defect_len:
+        return infer(model[1:], defects)
+    if known_defect_index < defect_len:
+        next_var = model.find("?", known_defect_index)
+        known_defect_range = next_var - known_defect_index
+        if known_defect_range == defect_len:
+            return infer(model[next_var + 1 :], defects[1:])
+        unknown = defect_len - known_defect_range
+        keep_start = known_defect_index - unknown
+        if keep_start > 0:
+            return infer(model[keep_start:], defects)
+
+    return (model, defects)
+
+
 def solve(model: str, defects: list[int]) -> int:
     min_needed = sum(defects) + len(defects) - 1
     if len(model) < min_needed:
@@ -51,12 +73,16 @@ def solve(model: str, defects: list[int]) -> int:
             result += solve(model_a, defects_a) * solve(model_b, defects_b)
         return result
 
+    model, defects = infer(model, defects)
+
     if all(char == "?" for char in model):
         return calc_clean_combinations(len(model), defects)
 
     var_indexes = [i for i, char in enumerate(model) if char == "?"]
+    def_indexes = [i for i, char in enumerate(model) if char == "#"]
+
     total_defects = sum(defects)
-    known_defects = len(model) - len(var_indexes)
+    known_defects = len(def_indexes)
     to_assign = total_defects - known_defects
     count = 0
     for assigned_defects in combinations(var_indexes, to_assign):
@@ -83,6 +109,10 @@ def main():
     for line in lines:
         model, defs = line.split()
         defs = [int(d) for d in defs.split(",")]
+
+        model = "?".join([model] * 5)
+        defs = defs * 5
+
         result += solve(model, defs)
 
     print(result)
