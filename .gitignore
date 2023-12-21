@@ -160,4 +160,4 @@ cython_debug/
 #.idea/
 
 # AoC inputs
-day*_input.txt
+*.txt
