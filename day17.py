@@ -1,8 +1,10 @@
 import math
 
 
+# NOTE deliberately implementing heap instead of using heapq just for the coding practice
 class Heap:
-    _arr = []
+    def __init__(self):
+        self._arr = []
 
     def push(self, item):
         self._arr.append(item)
@@ -90,71 +92,59 @@ class Solution:
         self.dis_heuristic = {}
         for i in range(self.n):
             for j in range(self.m):
+                # NOTE using A* instead of Djikstra but it makes little difference in our case
                 self.dis_heuristic[(i, j)] = self.n + self.m - i - j - 2
                 self.heat[(i, j)] = int(lines[i][j])
 
     def part1(self):
+        return self.solve(1, 3)
+
+    def part2(self):
+        return self.solve(4, 10)
+
+    def solve(self, min_moves, max_moves):
+        # NOTE idea for pushing all going forward is from reddit
+        # https://old.reddit.com/r/adventofcode/comments/18k9ne5/2023_day_17_solutions/kdq86mr/
+
         start = (0, 0)
-        end = (self.n - 1, self.m - 1)
+        end = max(self.heat)
 
-        dis_to_start = {(start, ()): 0}
-        best_combined = Heap()
-        best_combined.push((0, start, ()))
+        best_candidate = Heap()
+        best_candidate.push((0, start, (0, 0)))
+        cost_to_start = {(start, (0, 0)): 0}
+        seen = set()
 
-        while best_combined:
-            cost, node, path = best_combined.pop()
+        while best_candidate:
+            _, (x, y), (dir_x, dir_y) = best_candidate.pop()
+            key = ((x, y), (dir_x, dir_y))
+            if (x, y) == end:
+                return cost_to_start[key]
 
-            if node == end:
-                return cost
-
-            for direction, neighbour in self.valid_neighbours(node, path):
-                potential_dis = dis_to_start[(node, path[-3:])] + self.heat[neighbour]
-                n_tuple = (neighbour, path[-2:] + (direction,))
-                if potential_dis < dis_to_start.get(n_tuple, math.inf):
-                    dis_to_start[n_tuple] = potential_dis
-                    estimate = potential_dis + self.dis_heuristic[neighbour]
-                    best_combined.push((estimate, neighbour, path + (direction,)))
-
-    def valid_neighbours(self, node, path):
-        if not path:
-            return self.all_neighbours(node)
-
-        neighbours = []
-        for direction, neighbour in self.all_neighbours(node):
-            if self.are_opposite(direction, path[-1]):
+            if key in seen:
                 continue
-            if (
-                len(path) >= 3
-                and direction == path[-1]
-                and path[-1] == path[-2]
-                and path[-2] == path[-3]
-            ):
-                continue
-            neighbours.append((direction, neighbour))
-        return neighbours
+            seen.add(key)
 
-    def are_opposite(self, a, b):
-        return (
-            (a == "l" and b == "r")
-            or (a == "r" and b == "l")
-            or (a == "u" and b == "d")
-            or (a == "d" and b == "u")
-        )
-
-    def all_neighbours(self, node):
-        i, j = node
-        neighbours = []
-        if i > 0:
-            neighbours.append(("u", (i - 1, j)))
-        if i < self.n - 1:
-            neighbours.append(("d", (i + 1, j)))
-        if j > 0:
-            neighbours.append(("l", (i, j - 1)))
-        if j < self.m - 1:
-            neighbours.append(("r", (i, j + 1)))
-        return neighbours
+            valid_dirs = {(0, -1), (0, 1), (-1, 0), (1, 0)} - {
+                (dir_x, dir_y),
+                (-dir_x, -dir_y),
+            }
+            for dx, dy in valid_dirs:
+                new_x, new_y = x, y
+                new_cost = cost_to_start[key]
+                for i in range(1, max_moves + 1):
+                    new_x, new_y = new_x + dx, new_y + dy
+                    pos, dir = (new_x, new_y), (dx, dy)
+                    if pos not in self.heat:
+                        continue
+                    new_cost += self.heat[pos]
+                    if i >= min_moves:
+                        if new_cost < cost_to_start.get((pos, dir), math.inf):
+                            cost_to_start[pos, dir] = new_cost
+                        f_cost = new_cost + self.dis_heuristic[pos]
+                        best_candidate.push((f_cost, pos, dir))
 
 
 if __name__ == "__main__":
     sol = Solution("day17_input.txt")
     print(sol.part1())
+    print(sol.part2())
